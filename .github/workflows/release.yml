@@ -1,0 +1,80 @@
+name: Tag and release on version change
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "pyproject.toml"
+
+jobs:
+  tag:
+    name: Create tag if version updated
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write   # Required for PyPI Trusted Publishing (OIDC)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))
+          version = data['project']['version']
+          print(f"version={version}")
+          PY
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "action@github.com"
+
+      - name: Create and push tag if missing
+        id: tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          echo "Version: ${VERSION}"
+          echo "Tag: ${TAG}"
+          git fetch --tags --force
+          # default output indicating whether we created a new tag in this run
+          echo "created=false" >> "$GITHUB_OUTPUT"
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists. Skipping."
+            exit 0
+          fi
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: ${{ steps.tag.outputs.created == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish distributions
+        if: ${{ steps.tag.outputs.created == 'true' }}
+        run: |
+          uv build
+          uv publish
