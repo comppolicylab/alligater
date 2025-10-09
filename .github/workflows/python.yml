@@ -17,30 +17,32 @@ jobs:
     env:
       wd: ./
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{github.head_ref}}
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - name: Set up poetry
-        run: pipx install poetry
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "poetry"
-        id: py
+        env:
+          pyversion: ${{ matrix.python-version }}
+        run: uv python install "$pyversion"
 
       - name: Get requirements
         working-directory: ${{env.wd}}
-        run: |
-          poetry install --with dev --no-interaction --no-ansi
+        run: uv sync --group dev --frozen
 
       - name: Linting, formatting, and type checking
         working-directory: ${{env.wd}}
-        run: poetry run pre-commit run --show-diff-on-failure --all-files
+        run: uv run pre-commit run --show-diff-on-failure --all-files
 
       - name: Test
         working-directory: ${{env.wd}}
-        run: poetry run pytest -v
+        run: uv run pytest -v
