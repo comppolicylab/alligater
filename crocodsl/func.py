@@ -1,6 +1,8 @@
 import re
 from collections.abc import Iterable, Sequence
 
+import signed_id
+
 from .common import hash_id, utcnow
 
 
@@ -509,6 +511,29 @@ class TrimSuffix(_BinaryExpression):
         result = s.removesuffix(suffix)
 
         self._trace(log, [s, suffix], result)
+
+        return result
+
+
+class ShortCode(_BinaryExpression):
+    """Generate a signed short code with the given input and secret.
+
+    Example:
+        ShortCode($my_prop, 'shhh! secret!')
+    """
+
+    def __call__(self, *args, log=None, context=None):
+        subject, secret = self.evaluate(*args, log=log, context=context)
+
+        if not isinstance(subject, str):
+            raise TypeError(f"Expect {type(subject)} to be str")
+
+        if not isinstance(secret, str):
+            raise TypeError(f"Expect {type(secret)} to be str")
+
+        result = signed_id.generate(subject, secret)
+
+        self._trace(log, [subject, secret], result)
 
         return result
 

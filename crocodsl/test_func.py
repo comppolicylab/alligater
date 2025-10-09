@@ -251,6 +251,15 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(TypeError):
             func.TrimSuffix("abc", None)()
 
+    def test_short_code(self):
+        """Test short code generation."""
+        assert repr(func.ShortCode("a", "b")) == "ShortCode('a', 'b')"
+        assert func.ShortCode("test_input", "shh!")() == "9528c156"
+        with self.assertRaises(TypeError):
+            func.ShortCode(123, "shh!")()
+        with self.assertRaises(TypeError):
+            func.ShortCode("123", None)()
+
     def test_composition(self):
         """Make sure functions can be composed."""
         assert func.Hash(func.Concat("a", "b", "c"))() == 0.7054175881782409
