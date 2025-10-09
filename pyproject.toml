@@ -1,6 +1,6 @@
 [project]
 name = "alligater"
-version = "0.4.2"
+version = "0.5.0"
 description = "Randomization and gating library for Python."
 authors = [{ name = "Joe Nudell", email = "jnudell@hks.harvard.edu" }]
 requires-python = ">=3.11,<4"
