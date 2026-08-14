@@ -203,7 +203,9 @@ class ObjectLogger(DeferrableLogger):
         """[THREAD] Loop over queue and write events as they are found."""
         while not self._stopped:
             with self._cv:
-                if not self._finished:
+                # Re-check after wait(): another worker may have taken the
+                # item, and Condition.wait() can also return spuriously.
+                while not self._finished and not self._stopped:
                     self._cv.wait()
 
                 if self._stopped:
