@@ -74,6 +74,27 @@ class MockWriter:
 
 
 class TestObjectLogger(unittest.IsolatedAsyncioTestCase):
+    async def test_worker_rechecks_queue_after_wait(self):
+        """wait() can return with an empty queue; do not pop in that case.
+
+        With multiple IO workers, a notified waiter can lose the item to a
+        sibling that re-enters the lock first. Condition.wait() can also
+        return spuriously. Either used to raise IndexError on pop(0).
+        """
+        write = MockWriter()
+        logger = ObjectLogger(write, workers=0)
+        waits = []
+
+        def fake_wait(timeout=None):
+            waits.append(timeout)
+            if len(waits) >= 2:
+                logger._stopped = True
+
+        logger._cv.wait = fake_wait
+        logger._write_results()
+        self.assertGreaterEqual(len(waits), 2)
+        logger.stop()
+
     async def test_log_simple(self):
         f = Feature(
             "test_feature",
